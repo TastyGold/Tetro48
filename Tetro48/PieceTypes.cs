@@ -35,6 +35,8 @@ namespace Tetro48
                 p.blocks.Add(VecInt2.Rotate(pieceData[id][i], rotation));
             }
 
+            p.UpdateBounds();
+
             return p;
         }
     }

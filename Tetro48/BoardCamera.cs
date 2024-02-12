@@ -34,7 +34,7 @@ namespace Tetro48
             }
         }
 
-        public int GetMouseTile(int boardWidth, int boardHeight, int boardTileSize)
+        public VecInt2 GetMouseTile(int boardWidth, int boardHeight, int boardTileSize)
         {
             Vector2 mousePos = Raylib.GetScreenToWorld2D(Raylib.GetMousePosition(), camera);
 
@@ -50,13 +50,21 @@ namespace Tetro48
             x = Math.Clamp(x, 0, boardWidth - 1);
             y = Math.Clamp(y, 0, boardHeight - 1);
 
-            return x + boardWidth * y;
+            return new VecInt2(x, y);
+        }
+
+        public int GetMouseCell(int boardWidth, int boardHeight, int boardTileSize)
+        {
+            VecInt2 tile = GetMouseTile(boardWidth, boardHeight, boardTileSize);
+            return tile.x + boardWidth * tile.y;
         }
 
         public void SetTargetAngle(float angle)
         {
             targetAngle = angle;
         }
+
+        public float GetTargetAngle() => targetAngle;
 
         public void Rotate(bool clockwise)
         {
