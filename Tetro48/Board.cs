@@ -36,7 +36,6 @@ namespace Tetro48
             foreach (Piece p in pieces)
             {
                 p.Draw(screenX, screenY, width, angle, false);
-                //p.DrawBounds(screenX, screenY, width, tileSize);
             }
         }
         
@@ -55,16 +54,17 @@ namespace Tetro48
             }
         }
 
-        public bool IsColliding(Piece p)
+        public bool IsColliding(Piece p, VecInt2 offset)
         {
-            VecInt2 pCenter = GetTile(p.center, width);
-            bool colliding = collisionMap[GetCell(pCenter, width)];
+            VecInt2 pCenter = GetTile(p.center, width) + offset;
+            bool colliding = !IsInBounds(pCenter) || collisionMap[GetCell(pCenter, width)];
             int i = 0;
             while (colliding == false && i < p.blocks.Count)
             {
-                pCenter = GetTile(p.center, width);
+                pCenter = GetTile(p.center, width) + offset;
                 VecInt2 blockTile = new VecInt2(pCenter.x + p.blocks[i].x, pCenter.y + p.blocks[i].y);
                 if (IsInBounds(blockTile)) colliding = collisionMap[GetCell(blockTile, width)];
+                else colliding = true;
                 i++;
             }
             return colliding;
@@ -80,6 +80,40 @@ namespace Tetro48
         {
             bool removed = pieces.Remove(p);
             if (removed) UpdateCollisionMap(p, false);
+        }
+
+        public bool TryMovePiece(Piece p, VecInt2 translation)
+        {
+            bool moved = false;
+            if (pieces.Contains(p)) UpdateCollisionMap(p, false);
+            if (!IsColliding(p, translation))
+            {
+                p.Translate(translation, width);
+                moved = true;
+            }
+            UpdateCollisionMap(p, true);
+            return moved;
+        }
+
+        public void SortPiecesByLowestPoint(int gameAngle)
+        {
+            pieces = gameAngle switch
+            {
+                0 => pieces.OrderByDescending(p => p.boundsMax.y).ToList(),
+                1 => pieces.OrderByDescending(p => p.boundsMax.x).ToList(),
+                2 => pieces.OrderBy(p => p.boundsMin.y).ToList(),
+                3 => pieces.OrderBy(p => p.boundsMin.x).ToList(),
+                _ => throw new Exception($"Invalid game angle: {gameAngle}")
+            };
+                
+        }
+
+        public void ClearCollisionMap()
+        {
+            for (int i = 0; i < collisionMap.Length; i++)
+            {
+                collisionMap[i] = false;
+            }
         }
 
         public void UpdateCollisionMap(Piece p, bool state)

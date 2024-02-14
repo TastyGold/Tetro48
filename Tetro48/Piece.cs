@@ -17,6 +17,8 @@ namespace Tetro48
 
         public VecInt2 boundsMin, boundsMax;
 
+        public bool shouldDestroy = false;
+
         public void Draw(int boardX, int boardY, int boardWidth, int angle, bool transparent)
         {
             foreach (VecInt2 pos in blocks)
@@ -28,6 +30,11 @@ namespace Tetro48
             }
 
             DrawCell(color, boardX, boardY, center % boardWidth, center / boardWidth, angle, transparent);
+        }
+
+        public void Translate(VecInt2 offset, int boardWidth)
+        {
+            center += offset.x + offset.y * boardWidth;
         }
 
         public void UpdateBounds()

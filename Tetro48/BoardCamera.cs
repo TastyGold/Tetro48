@@ -15,7 +15,7 @@ namespace Tetro48
             float delta = rotationSpeed * Raylib.GetFrameTime();
             if (Math.Abs(camera.Rotation - targetAngle) > delta)
             {
-                camera.Rotation += delta * Math.Sign(targetAngle - camera.Rotation);
+                camera.Rotation += (delta) * Math.Sign(targetAngle - camera.Rotation);
             }
             else
             {
@@ -32,6 +32,11 @@ namespace Tetro48
                 camera.Rotation -= 360;
                 targetAngle -= 360;
             }
+        }
+
+        public bool TargetAngleReached()
+        {
+            return camera.Rotation == targetAngle;
         }
 
         public VecInt2 GetMouseTile(int boardWidth, int boardHeight, int boardTileSize)
@@ -69,6 +74,11 @@ namespace Tetro48
         public void Rotate(bool clockwise)
         {
             SetTargetAngle(targetAngle + (clockwise ? 90 : -90));
+        }
+        public void Rotate180(bool clockwise)
+        {
+            SetTargetAngle(targetAngle + 180);
+            camera.Rotation += clockwise ? 0.1f : -0.1f;
         }
 
         public BoardCamera(int screenScale)
