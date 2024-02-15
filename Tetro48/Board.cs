@@ -57,7 +57,9 @@ namespace Tetro48
         public bool IsColliding(Piece p, VecInt2 offset)
         {
             VecInt2 pCenter = GetTile(p.center, width) + offset;
-            bool colliding = !IsInBounds(pCenter) || collisionMap[GetCell(pCenter, width)];
+            if (!IsInBounds(pCenter)) return true;
+
+            bool colliding = !IsInBounds(pCenter);
             int i = 0;
             while (colliding == false && i < p.blocks.Count)
             {
@@ -108,6 +110,20 @@ namespace Tetro48
                 
         }
 
+        public bool IsLineComplete(int line, bool horizontal)
+        {
+            bool complete = true;
+            int i = 0;
+            while (complete == true && i < (horizontal ? width : height))
+            {
+                int x = horizontal ? i : line;
+                int y = horizontal ? line : i;
+                complete &= collisionMap[GetCell(new VecInt2(x, y), width)];
+                i++;
+            }
+            return complete;
+        }
+
         public void ClearCollisionMap()
         {
             for (int i = 0; i < collisionMap.Length; i++)
@@ -118,7 +134,6 @@ namespace Tetro48
 
         public void UpdateCollisionMap(Piece p, bool state)
         {
-            collisionMap[p.center] = state;
             foreach (VecInt2 offset in p.blocks)
             {
                 int cell = p.center + offset.x + offset.y * width;

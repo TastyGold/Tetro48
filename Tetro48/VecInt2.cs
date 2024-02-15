@@ -6,6 +6,7 @@
         public int y;
 
         public static VecInt2 Zero = new VecInt2(0, 0);
+        public static VecInt2 One = new VecInt2(1, 1);
         public static VecInt2 Up = new VecInt2(0, -1);
         public static VecInt2 Right = new VecInt2(1, 0);
         public static VecInt2 Down = new VecInt2(0, 1);
