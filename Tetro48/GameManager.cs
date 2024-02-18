@@ -7,8 +7,8 @@ namespace Tetro48
         public static int boardWidth = 12;
         public static int boardHeight = 12;
 
-        public static int boardScreenPosX = (100 - boardWidth * 4);
-        public static int boardScreenPosY = (75 - boardWidth * 4);
+        public static int boardScreenPosX = 100 - boardWidth * 4;
+        public static int boardScreenPosY = 75 - boardWidth * 4;
         public const int boardTileSize = 8;
 
         public static int boardWorldX = boardTileSize * boardWidth / -2;
@@ -39,10 +39,21 @@ namespace Tetro48
         public static List<Piece> fallingPieces = new List<Piece>();
         public static List<Piece> landedPieces = new List<Piece>();
         public static List<Piece> mergedPieces = new List<Piece>();
+        public static List<int> clearedLines = new List<int>();
+
+        public static List<VecInt2> clearedPieces = new List<VecInt2>();
+        public static Color pieceClearColor = new Color(220, 220, 220, 255);
+        public static int clearFlashRate = 8;
+        public static int clearAnimDuration = 24; 
+
+        public static int piecePopThreshold = 14;
+
+        public static bool enableDebugOverlay = false;
+        public static KeyboardKey debugEnableKey = KeyboardKey.F3;
 
         public static void Begin()
         {
-            Raylib.InitWindow(200 * screenScale, 150 * screenScale, "Tetr048");
+            Raylib.InitWindow(200 * screenScale, 150 * screenScale, "Tetro48");
             Raylib.SetTargetFPS(60);
             PieceTypes.Initalise();
 
@@ -57,10 +68,12 @@ namespace Tetro48
             UpdateGameState();
 
             if (Raylib.IsKeyPressed(KeyboardKey.R)) state.SetNextGameState(GameState.PlayerInControl);
+            if (Raylib.IsKeyPressed(debugEnableKey)) enableDebugOverlay = !enableDebugOverlay;
 
             if (state.currentState == GameState.PlayerInControl) HandlePlayerControls();
             if (state.currentState == GameState.Rotating) boardCam.Update();
             if (state.currentState == GameState.PiecesFalling) HandleFallingPieces();
+            if (state.currentState == GameState.PieceClear) HandlePieceClearing();
         }
 
         public static void Draw()
@@ -69,18 +82,11 @@ namespace Tetro48
             Raylib.ClearBackground(new Color(40, 40, 44, 255));
 
             Raylib.BeginMode2D(boardCam.camera);
-            board.DrawBackground(boardWorldX, boardWorldY, boardTileSize);
-            if (state.currentState == GameState.PlayerInControl) dropZone.DrawSmart(boardWorldX, boardWorldY, boardWidth, boardHeight, boardTileSize, dropZone.InZoneBounds(mouseTile, boardWidth, boardHeight));
-            board.DrawPieces(boardWorldX, boardWorldY, gameAngle);
-            if (state.currentState == GameState.PlayerInControl) heldPiece.Draw(boardWorldX, boardWorldY, boardWidth, gameAngle, !canPlacePiece);
-            //heldPiece.DrawBounds(boardWorldX, boardWorldY, boardWidth, boardTileSize);
-            HighlightLandedPieces();
-            //HighlightMergedPieces();
-            board.DrawCollisionMap(boardWorldX, boardWorldY, boardTileSize);
+            DrawBoardAndPieces();
+            if (enableDebugOverlay) DrawDebugOverlay();
             Raylib.EndMode2D();
 
-            Raylib.DrawText($"GameAngle: {gameAngle}", screenScale, screenScale, 5*screenScale, Color.White);
-            Raylib.DrawText($"GameState: {Enum.GetName(typeof(GameState), state.currentState)}", screenScale, 7 * screenScale, 5 * screenScale, Color.White);
+            if (enableDebugOverlay) DrawDebugUI();
             Raylib.EndDrawing();
         }
 
@@ -98,7 +104,44 @@ namespace Tetro48
             if (tile.y + heldPiece.boundsMax.y >= boardHeight) tile.y = boardHeight - heldPiece.boundsMax.y - 1;
             return tile;
         }
-       
+
+        public static void DrawBoardAndPieces()
+        {
+            board.DrawBackground(boardWorldX, boardWorldY, boardTileSize);
+            if (state.currentState == GameState.PlayerInControl) dropZone.DrawSmart(boardWorldX, boardWorldY, boardWidth, boardHeight, boardTileSize, dropZone.InZoneBounds(mouseTile, boardWidth, boardHeight));
+            board.DrawPieces(boardWorldX, boardWorldY, gameAngle);
+            if (state.currentState == GameState.PlayerInControl)
+            {
+                GhostPiece.Draw(board, heldPiece, gameAngle, boardWorldX, boardWorldY, boardWidth);
+                heldPiece.Draw(boardWorldX, boardWorldY, boardWidth, gameAngle, !canPlacePiece);
+            }
+            if (state.currentState == GameState.PieceClear) DrawPieceClearing();
+        }
+        public static void DrawDebugOverlay()
+        {
+            //heldPiece.DrawBounds(boardWorldX, boardWorldY, boardWidth, boardTileSize);
+            //HighlightLandedPieces();
+            board.DrawPieceCenters(boardWorldX, boardWorldY);
+            if (state.currentState == GameState.PlayerInControl) heldPiece.DrawCenter(boardWorldX, boardWorldY, boardWidth);
+            HighlightMergedPieces();
+            board.DrawCollisionMap(boardWorldX, boardWorldY, boardTileSize);
+        }
+        public static void DrawDebugUI()
+        {
+            Raylib.DrawText($"GameAngle: {gameAngle}", screenScale, screenScale, 5 * screenScale, Color.White);
+            Raylib.DrawText($"GameState: {Enum.GetName(typeof(GameState), state.currentState)}", screenScale, 7 * screenScale, 5 * screenScale, Color.White);
+        }
+        public static void DrawPieceClearing()
+        {
+            if (state.frameCounter % (clearFlashRate * 2) < clearFlashRate)
+            {
+                for (int i = 0; i < clearedPieces.Count; i++)
+                {
+                    Raylib.DrawRectangle(boardWorldX + clearedPieces[i].x * boardTileSize, boardWorldY + clearedPieces[i].y * boardTileSize, boardTileSize, boardTileSize, pieceClearColor);
+                }
+            }
+        }
+
         public static void HandlePlayerControls()
         {
             if (Raylib.IsKeyPressed(KeyboardKey.E)) heldPiece.Rotate(3, false);
@@ -252,16 +295,94 @@ namespace Tetro48
                         if (!mergedPieces.Contains(landedPieces[i])) mergedPieces.Add(landedPieces[i]);
                     }
                     else j++;
-
                 }
             }
 
             //check for line clears
             bool linesAreHorizontal = gameAngle % 2 == 0;
             int iMax = linesAreHorizontal ? boardWidth : boardHeight;
+            clearedLines.Clear();
             for (int i = 0; i < iMax; i++)
             {
                 bool lineCleared = board.IsLineComplete(i, linesAreHorizontal);
+
+                if (lineCleared)
+                {
+                    Console.WriteLine($"Cleared line {i}");
+                    returnPlayerControl = false;
+                    clearedLines.Add(i);
+                }
+            }
+
+            //filter for piece pops
+            int mi = 0;
+            while (mi < mergedPieces.Count)
+            {
+                if (mergedPieces[mi].Size >= piecePopThreshold)
+                {
+                    mi++;
+                    returnPlayerControl = false;
+                }
+                else
+                {
+                    mergedPieces.RemoveAt(mi);
+                }
+            }
+
+            //calculate pieces cleared
+            if (clearedLines.Count > 0 || mergedPieces.Count > 0)
+            {
+                clearedPieces.Clear();
+
+                for (int i = 0; i < mergedPieces.Count; i++)
+                {
+                    VecInt2 pCenter = mergedPieces[i].GetCenterTile(boardWidth);
+                    for (int j = 0; j < mergedPieces[i].blocks.Count; j++)
+                    {
+                        VecInt2 tile = pCenter + mergedPieces[i].blocks[j];
+                        if (!clearedPieces.Contains(tile))
+                        {
+                            clearedPieces.Add(tile);
+                        }
+                    }
+                }
+
+                for (int i = 0; i < clearedLines.Count; i++)
+                {
+                    for (int j = 0; j < iMax; j++)
+                    {
+                        int x = linesAreHorizontal ? j : clearedLines[i];
+                        int y = linesAreHorizontal ? clearedLines[i] : j;
+                        VecInt2 tile = new VecInt2(x, y);
+                        if (!clearedPieces.Contains(tile))
+                        {
+                            clearedPieces.Add(tile);
+                        }
+                    }
+                }
+
+                state.SetGameState(GameState.PieceClear);
+            }
+        }
+
+        public static void HandlePieceClearing()
+        {
+            if (state.frameCounter >= clearAnimDuration)
+            {
+                board.CalculateColorMap();
+
+                for (int i = 0; i < clearedPieces.Count; i++)
+                {
+                    board.colorMap[clearedPieces[i].x, clearedPieces[i].y] = -1;
+                }
+
+                board.ResetPiecesFromColorMap();
+
+                landedPieces.Clear();
+                mergedPieces.Clear();
+                board.RecalculateCollisionMap();
+
+                state.SetGameState(GameState.PiecesFalling);
             }
         }
 
@@ -277,7 +398,7 @@ namespace Tetro48
         {
             foreach (Piece p in mergedPieces)
             {
-                p.Highlight(boardWorldX, boardWorldY, boardWidth, new Color(0, 255, 0, 200));
+                p.Highlight(boardWorldX, boardWorldY, boardWidth, new Color(0, 255, 0, 140));
             }
         }
 

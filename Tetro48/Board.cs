@@ -15,6 +15,8 @@ namespace Tetro48
         private Texture2D collisionTexture = Raylib.LoadTexture("..\\..\\..\\tetro48_collisionMap.png");
 
         public bool[] collisionMap = null!;
+        public int[,] colorMap = null!;
+        private int[,] floodFill = null!;
 
         public List<Piece> pieces = new List<Piece>();
 
@@ -36,6 +38,14 @@ namespace Tetro48
             foreach (Piece p in pieces)
             {
                 p.Draw(screenX, screenY, width, angle, false);
+            }
+        }
+
+        public void DrawPieceCenters(int screenX, int screenY)
+        {
+            foreach (Piece p in pieces)
+            {
+                p.DrawCenter(screenX, screenY, width);
             }
         }
         
@@ -157,6 +167,122 @@ namespace Tetro48
             }
         }
 
+        public void CalculateColorMap()
+        {
+            for (int x = 0; x < colorMap.GetLength(0); x++)
+            {
+                for (int y = 0; y < colorMap.GetLength(1); y++)
+                {
+                    colorMap[x, y] = -1;
+                }
+            }
+
+            for (int i = 0; i < pieces.Count; i++)
+            {
+                VecInt2 pCenter = pieces[i].GetCenterTile(width);
+                for (int j = 0; j < pieces[i].blocks.Count; j++)
+                {
+                    VecInt2 tile = pCenter + pieces[i].blocks[j];
+                    if (IsInBounds(tile))
+                    {
+                        colorMap[tile.x, tile.y] = pieces[i].color;
+                    }
+                }
+            }
+        }
+
+        public void ResetPiecesFromColorMap()
+        {
+            pieces.Clear();
+            for (int y = 0; y < colorMap.GetLength(1); y++)
+            {
+                for (int x = 0; x < colorMap.GetLength(0); x++)
+                {
+                    if (colorMap[x, y] >= 0)
+                    {
+                        ExtractPieceFromColorMap(x, y);
+                    }
+                }
+            }
+        }
+
+        public void ExtractPieceFromColorMap(int startX, int startY)
+        {
+            //reset floodFill array
+            for (int y = 0; y < floodFill.GetLength(1); y++)
+            {
+                for (int x = 0; x < floodFill.GetLength(0); x++)
+                {
+                    if (y < startY || (x < startX && y == startY))
+                    {
+                        floodFill[x, y] = -1; //confirmed negative
+                    }
+                    else if (y > startY || (x > startX && y == startY))
+                    {
+                        floodFill[x, y] = 0; //to be confirmed
+                    }
+                    else
+                    {
+                        floodFill[x, y] = 1; //confirmed positive
+                    }
+                }
+            }
+
+            //flood fill algorithm
+            List<VecInt2> confirmedTiles = new List<VecInt2>();
+            confirmedTiles.Add(new VecInt2(startX, startY));
+
+            List<VecInt2> possibleTiles = new List<VecInt2>();
+            if (startX < width - 1) possibleTiles.Add(new VecInt2(startX + 1, startY));
+            if (startY < height - 1) possibleTiles.Add(new VecInt2(startX, startY + 1));
+
+            while (possibleTiles.Count > 0)
+            {
+                if (colorMap[possibleTiles[0].x, possibleTiles[0].y] == colorMap[startX, startY])
+                {
+                    confirmedTiles.Add(possibleTiles[0]);
+                    floodFill[possibleTiles[0].x, possibleTiles[0].y] = 1;
+                    for (int i = 0; i < 4; i++)
+                    {
+                        VecInt2 offset = GameManager.gravityVectors[i];
+                        if (IsInBounds(possibleTiles[0] + offset) && floodFill[possibleTiles[0].x + offset.x, possibleTiles[0].y + offset.y] == 0)
+                        {
+                            possibleTiles.Add(new VecInt2(possibleTiles[0].x + offset.x, possibleTiles[0].y + offset.y));
+                        }
+                    }
+                }
+                
+                possibleTiles.RemoveAt(0);
+            }
+
+            Piece newPiece = new Piece();
+            newPiece.color = colorMap[startX, startY];
+            VecInt2 pCenter = new VecInt2(startX, startY);
+            newPiece.center = GetCell(pCenter, width);
+            foreach (VecInt2 tile in confirmedTiles)
+            {
+                VecInt2 offset = tile - pCenter;
+                newPiece.blocks.Add(offset);
+                colorMap[tile.x, tile.y] = -1;
+            }
+            pieces.Add(newPiece);
+        }
+
+        public void PrintMapToConsole(int[,] map)
+        {
+            for (int y = 0; y < map.GetLength(1); y++)
+            {
+                for (int x = 0; x < map.GetLength(0); x++)
+                {
+                    string color = /*map[x, y] < 0 ? "  " : */map[x, y].ToString();
+                    if (color.Length < 2) color = " " + color;
+                    Console.Write(color + " ");
+                    Console.Write(' ');
+                }
+                Console.WriteLine();
+            }
+        }
+
         public static int GetCell(VecInt2 tile, int boardWidth)
         {
             return tile.x + boardWidth * tile.y;
@@ -177,6 +303,8 @@ namespace Tetro48
             width = w;
             height = h;
             collisionMap = new bool[w * h];
+            colorMap = new int[w, h];
+            floodFill = new int[w, h];
         }
     }
 }

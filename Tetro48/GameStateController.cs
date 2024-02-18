@@ -38,7 +38,7 @@
         PlayerInControl,
         Rotating,
         PiecesFalling,
-        LineClear,
+        PieceClear,
         PieceMerging
     }
 }

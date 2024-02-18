@@ -6,6 +6,7 @@ namespace Tetro48
     internal class Piece
     {
         public static Texture2D pieceTexture = Raylib.LoadTexture("..\\..\\..\\tetro48_blockColors.png");
+        public static Texture2D centerTexture = Raylib.LoadTexture("..\\..\\..\\tetro48_pieceCenter.png");
         public static Color transparencyColor = new Color(255, 200, 200, 96);
         public static int resolution = 8;
 
@@ -17,7 +18,9 @@ namespace Tetro48
 
         public VecInt2 boundsMin, boundsMax;
         public VecInt2 GetPaddedBoundsMin() => boundsMin - VecInt2.One; 
-        public VecInt2 GetPaddedBoundsMax() => boundsMax + VecInt2.One; 
+        public VecInt2 GetPaddedBoundsMax() => boundsMax + VecInt2.One;
+
+        public int Size => blocks.Count;
 
         public bool shouldDestroy = false;
 
@@ -30,6 +33,14 @@ namespace Tetro48
 
                 DrawCell(color, boardX, boardY, x, y, angle, transparent);
             }
+        }
+
+        public void DrawCenter(int boardX, int boardY, int boardWidth)
+        {
+            VecInt2 tile = GetCenterTile(boardWidth);
+            Rectangle srec = new Rectangle(0, 0, resolution, resolution);
+            Rectangle drec = new Rectangle(boardX + tile.x * resolution, boardY +tile.y * resolution, resolution, resolution);
+            Raylib.DrawTexturePro(centerTexture, srec, drec, Vector2.Zero, 0, Color.White);
         }
 
         public bool IsIntersectingBounds(VecInt2 min, VecInt2 max)
