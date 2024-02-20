@@ -20,7 +20,7 @@ namespace Tetro48
         public static DropZone dropZone = null!;
         public static BoardCamera boardCam = new BoardCamera(screenScale);
         public static GameStateController state = new GameStateController();
-        public static Random rand = new Random();
+        public static NextQueue nextQueue = null!;
 
         public static int gameAngle = 0;
         public readonly static VecInt2[] gravityVectors =
@@ -51,16 +51,21 @@ namespace Tetro48
         public static bool enableDebugOverlay = false;
         public static KeyboardKey debugEnableKey = KeyboardKey.F3;
 
+        public static bool updateQueue = false;
+
         public static void Begin()
         {
             Raylib.InitWindow(200 * screenScale, 150 * screenScale, "Tetro48");
             Raylib.SetTargetFPS(60);
             PieceTypes.Initalise();
 
+            nextQueue = new NextQueue(5);
+            nextQueue.Initialise();
+
             board = new Board(boardWidth, boardHeight);
             dropZone = new DropZone(3, 0);
 
-            heldPiece = PieceTypes.GetNewPiece(2, 65, 0);
+            heldPiece = PieceTypes.GetNewPiece(nextQueue.randomiser.GetNextPiece(true), 65, 0);
         }
 
         public static void Update()
@@ -80,6 +85,7 @@ namespace Tetro48
         {
             Raylib.BeginDrawing();
             Raylib.ClearBackground(new Color(40, 40, 44, 255));
+            DrawUI();
 
             Raylib.BeginMode2D(boardCam.camera);
             DrawBoardAndPieces();
@@ -117,6 +123,10 @@ namespace Tetro48
             }
             if (state.currentState == GameState.PieceClear) DrawPieceClearing();
         }
+        public static void DrawUI()
+        {
+            nextQueue.Draw(screenScale);
+        }
         public static void DrawDebugOverlay()
         {
             //heldPiece.DrawBounds(boardWorldX, boardWorldY, boardWidth, boardTileSize);
@@ -144,6 +154,12 @@ namespace Tetro48
 
         public static void HandlePlayerControls()
         {
+            if (updateQueue)
+            {
+                nextQueue.AdvanceQueue();
+                updateQueue = false;
+            }
+
             if (Raylib.IsKeyPressed(KeyboardKey.E)) heldPiece.Rotate(3, false);
             if (Raylib.IsKeyPressed(KeyboardKey.Q)) heldPiece.Rotate(1, false);
 
@@ -195,7 +211,8 @@ namespace Tetro48
                     HandleLandedPieces(out _);
                 }
 
-                heldPiece = PieceTypes.GetNewPiece(rand.Next(12), pieceCell, gameAngle);
+                heldPiece = nextQueue.GetNextPiece(pieceCell, gameAngle);
+                updateQueue = true;
             }
 
             if (gameAngle < 0) gameAngle += 4;

@@ -8,9 +8,9 @@ namespace Tetro48
         private readonly int width = 24;
         private readonly int height = 12;
 
-        private Color gridColorA = new Color(20, 20, 21, 255);
-        private Color gridColorB = new Color(28, 28, 30, 255);
-        private Color gridBorderColor = new Color(60, 60, 63, 255);
+        public static Color gridColorA = new Color(20, 20, 21, 255);
+        public static Color gridColorB = new Color(28, 28, 30, 255);
+        public static Color gridBorderColor = new Color(60, 60, 63, 255);
 
         private Texture2D collisionTexture = Raylib.LoadTexture("..\\..\\..\\tetro48_collisionMap.png");
 

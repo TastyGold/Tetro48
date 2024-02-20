@@ -1,6 +1,6 @@
 ﻿namespace Tetro48
 {
-    public class GameStateController
+    internal class GameStateController
     {
         public GameState currentState = GameState.PlayerInControl;
         public GameState nextState = GameState.PlayerInControl;
@@ -33,7 +33,7 @@
         }
     }
 
-    public enum GameState
+    internal enum GameState
     {
         PlayerInControl,
         Rotating,
